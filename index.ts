@@ -2,24 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import carsRouter from './routes/cars';
 import { setupSwagger } from './swagger';
+import authRoutes from './routes/auth.routes';
 
 const app = express();
+const PORT = 3000;
 
-
-app.use(cors({
-  origin: 'http://localhost:4200', 
-  credentials: true
-}));
-
+app.use(cors());
 app.use(express.json());
 
-app.use('/cars', carsRouter);
+app.use('/api', authRoutes); 
 
-setupSwagger(app);
-
-const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(` Server running at http://localhost:${PORT}`);
 });
-
-export default app;
