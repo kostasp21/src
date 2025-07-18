@@ -16,7 +16,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
       return res.status(403).json({ error: 'Μη έγκυρο ή ληγμένο token' });
     }
 
-    // Αποθηκεύουμε τον χρήστη στο req
+    // Αποθηκεύει τον χρήστη στο req
     (req as any).user = user;
     next();
   });

@@ -1,4 +1,4 @@
-import pool from '../db';
+import {pool} from '../db';
 import { Car } from '../models/cars.model';
 
 export const getAllCars = async (): Promise<Car[]> => {
