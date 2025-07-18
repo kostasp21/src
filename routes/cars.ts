@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import pool from '../db';
+import { pool } from '../db';
 import { validateBody } from '../middleware/validate';
 import { carSchema } from '../validation/carSchema';
 
