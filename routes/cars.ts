@@ -7,6 +7,45 @@ import { carSchema } from '../validation/carSchema';
 
 const router = Router();
 
+
+router.get('/available', async (req: Request, res: Response) => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    console.log('🔍 Searching for available cars:', { start_date, end_date });
+
+    if (!start_date || !end_date) {
+      return res.status(400).json({ error: 'Οι ημερομηνίες start_date και end_date είναι υποχρεωτικές' });
+    }
+
+    // Διόρθωση: χρησιμοποίησε price_per_day αντί για daily_rate
+    const result = await pool.query(`
+      SELECT c.* 
+      FROM cars c
+      WHERE c.car_id NOT IN (
+        SELECT DISTINCT r.car_id 
+        FROM rentals r 
+        WHERE r.car_id IS NOT NULL
+        AND (
+          (r.start_date <= $1 AND r.end_date >= $1) OR
+          (r.start_date <= $2 AND r.end_date >= $2) OR  
+          (r.start_date >= $1 AND r.end_date <= $2)
+        )
+      )
+      ORDER BY c.price_per_day ASC
+    `, [start_date, end_date]);
+
+    console.log(` Found ${result.rows.length} available cars`);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(' Error finding available cars:', err);
+    res.status(500).json({ error: 'Σφάλμα κατά την αναζήτηση διαθέσιμων αυτοκινήτων' });
+  }
+});
+
+
+
+
 /**  
  * @swagger
  * tags:
@@ -244,5 +283,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Σφάλμα κατά τη διαγραφή του αυτοκινήτου' });
   }
 });
+
+
 
 export default router;
