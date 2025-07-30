@@ -93,6 +93,39 @@ router.get('/available', async (req: Request, res: Response) => {
   }
 });
 
+
+
+
+// GET popular cars (most rented)
+router.get('/popular', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        c.*,
+        COALESCE(r.rental_count, 0) as rental_count
+      FROM cars c
+      LEFT JOIN (
+        SELECT 
+          car_id, 
+          COUNT(*) as rental_count
+        FROM rentals 
+        GROUP BY car_id
+      ) r ON c.car_id = r.car_id
+      ORDER BY r.rental_count DESC NULLS LAST, c.price_per_day ASC
+      LIMIT 6
+    `);
+
+    console.log(`🌟 Retrieved ${result.rows.length} popular cars`);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Error fetching popular cars:', err);
+    res.status(500).json({ error: 'Σφάλμα κατά την ανάκτηση δημοφιλών αυτοκινήτων' });
+  }
+});
+
+
+
+
 // GET όλα τα αυτοκίνητα με φίλτρα
 router.get('/', async (req: Request, res: Response) => {
   try {
