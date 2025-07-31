@@ -147,4 +147,105 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// ✅ ΕΝΗΜΕΡΩΣΗ: POST /api/rentals με quantity update
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const {
+      car_id,
+      customer_name,
+      customer_phone,
+      customer_address,
+      city,
+      postal_code,
+      start_date,
+      end_date,
+      days,
+      total_price
+    } = req.body;
+
+    console.log('📝 Creating rental with data:', req.body);
+
+    // ✅ ΠΡΟΣΘΗΚΗ: Έλεγχος διαθεσιμότητας
+    const carCheck = await pool.query('SELECT quantity, brand, model FROM cars WHERE car_id = $1', [car_id]);
+    
+    if (carCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Το αυτοκίνητο δεν βρέθηκε'
+      });
+    }
+
+    const car = carCheck.rows[0];
+    
+    if (car.quantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το αυτοκίνητο δεν είναι διαθέσιμο'
+      });
+    }
+
+    // ✅ ΚΥΡΙΟΣ ΣΤΟΧΟΣ: Δημιουργία rental ΚΑΙ μείωση διαθεσιμότητας
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // 1. Δημιουργία rental
+      const rentalResult = await client.query(`
+        INSERT INTO rentals (
+          car_id, customer_name, customer_phone, customer_address, 
+          city, postal_code, start_date, end_date, days, total_price, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')
+        RETURNING *
+      `, [car_id, customer_name, customer_phone, customer_address, city, postal_code, start_date, end_date, days, total_price]);
+
+      // 2. Μείωση διαθεσιμότητας
+      const updateResult = await client.query(`
+        UPDATE cars 
+        SET quantity = quantity - 1, updated_at = CURRENT_TIMESTAMP
+        WHERE car_id = $1 AND quantity > 0
+        RETURNING quantity
+      `, [car_id]);
+
+      if (updateResult.rows.length === 0) {
+        throw new Error('Αποτυχία ενημέρωσης διαθεσιμότητας');
+      }
+
+      await client.query('COMMIT');
+
+      const rental = rentalResult.rows[0];
+      const newQuantity = updateResult.rows[0].quantity;
+
+      console.log('✅ Rental created and quantity updated:', {
+        rental_id: rental.rental_id,
+        car_id: car_id,
+        new_quantity: newQuantity,
+        car_info: `${car.brand} ${car.model}`
+      });
+
+      res.status(201).json({
+        success: true,
+        data: rental,
+        rental: rental,
+        car_quantity: newQuantity, // ✅ Επιστρέφουμε τη νέα διαθεσιμότητα
+        message: `Ενοικίαση δημιουργήθηκε επιτυχώς! Απομένουν ${newQuantity} διαθέσιμα ${car.brand} ${car.model}.`
+      });
+
+    } catch (transactionError) {
+      await client.query('ROLLBACK');
+      throw transactionError;
+    } finally {
+      client.release();
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error creating rental:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα κατά τη δημιουργία ενοικίασης',
+      error: error.message
+    });
+  }
+});
+
 export default router;

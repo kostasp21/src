@@ -134,4 +134,21 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
+// GET /users - Λήψη όλων των χρηστών (για admin)
+router.get('/users', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC'
+    );
+    
+    res.json({
+      success: true,
+      users: result.rows
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Σφάλμα διακομιστή' });
+  }
+});
+
 export default router;
