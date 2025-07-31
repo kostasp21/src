@@ -205,6 +205,46 @@ router.get('/all', async (req: Request, res: Response) => {
   }
 });
 
+// ✅ ΠΡΟΣΘΗΚΗ: Get bookings by customer email/phone
+router.get('/user/:identifier', async (req: Request, res: Response) => {
+  try {
+    await createBookingsTable();
+    
+    const { identifier } = req.params; // email ή phone
+    console.log('📋 GET /api/bookings/user for identifier:', identifier);
+    
+    const result = await pool.query(`
+      SELECT 
+        b.*,
+        c.brand,
+        c.model,
+        c.price_per_day,
+        c.image_url
+      FROM simple_bookings b
+      JOIN cars c ON b.car_id = c.car_id
+      WHERE b.customer_email = $1 OR b.customer_phone = $1
+      ORDER BY b.created_at DESC
+    `, [identifier]);
+
+    console.log(`✅ Found ${result.rows.length} bookings for user: ${identifier}`);
+
+    res.json({
+      success: true,
+      bookings: result.rows,
+      data: result.rows,
+      count: result.rows.length,
+      user_identifier: identifier
+    });
+  } catch (error: any) {
+    console.error('❌ Error fetching user bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user bookings',
+      error: error.message
+    });
+  }
+});
+
 console.log('✅ Bookings routes loaded - CLEAN VERSION');
 
 export default router;
