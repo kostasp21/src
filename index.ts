@@ -13,7 +13,7 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// ✅ LOGGING για debugging
+//  LOGGING για debugging
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
@@ -24,7 +24,7 @@ app.use('/api/cars', carsRouter);
 app.use('/api/rentals', rentalsRouter);
 app.use('/api/bookings', bookingsRouter);
 
-// ✅ HEALTH CHECK
+//  HEALTH CHECK
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -33,34 +33,34 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ✅ SIMPLE connectDB function
+//  SIMPLE connectDB function
 const connectDB = async () => {
   try {
     const client = await pool.connect();
-    console.log('✅ Database connected successfully');
+    console.log(' Database connected successfully');
     
     // Test query
     const result = await client.query('SELECT NOW()');
-    console.log('✅ Database test:', result.rows[0]);
+    console.log(' Database test:', result.rows[0]);
     
     client.release();
     return pool;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error(' Database connection failed:', error);
     throw error;
   }
 };
 
-// ✅ START SERVER WITH DATABASE
+//  START SERVER WITH DATABASE
 const startServer = async () => {
   try {
     // Connect to database first
     await connectDB();
-    console.log('✅ PostgreSQL database connected successfully');
+    console.log(' PostgreSQL database connected successfully');
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-      console.log('✅ Database: PostgreSQL (localhost:5432/postgres)');
+      console.log(` Server running at http://localhost:${PORT}`);
+      console.log(' Database: PostgreSQL (localhost:5432/postgres)');
       console.log('Available routes:');
       console.log('- /api/auth');
       console.log('- /api/cars');
@@ -69,11 +69,11 @@ const startServer = async () => {
       console.log('- /api/health');
     });
   } catch (error) {
-    console.error('❌ Failed to connect to database:', error);
-    console.log('⚠️ Starting server without database...');
+    console.error(' Failed to connect to database:', error);
+    console.log(' Starting server without database...');
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT} (NO DATABASE)`);
+      console.log(` Server running at http://localhost:${PORT} (NO DATABASE)`);
     });
   }
 };

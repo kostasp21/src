@@ -6,7 +6,7 @@ import { pool } from '../db';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_KEY';
 
-// LOGIN - Ενημερωμένο
+// LOGIN 
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -35,7 +35,7 @@ router.post('/login', async (req: Request, res: Response) => {
     
     let isValid = false;
     
-    // Ελέγξε αν είναι hashed password ή plain text
+    // Ελεγξε αν είναι hashed password ή plain text
     if (user.password.startsWith('$2b$')) {
       // Hashed password
       isValid = await bcrypt.compare(password, user.password);

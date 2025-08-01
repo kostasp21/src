@@ -55,7 +55,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     total_price 
   } = req.body;
 
-  console.log('📝 Creating rental with data:', req.body);
+  console.log(' Creating rental with data:', req.body);
 
   // Validation
   if (!car_id || !customer_name || !customer_phone || !start_date || !end_date) {
@@ -73,10 +73,10 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       [car_id, customer_name, customer_phone, customer_address, city, postal_code, start_date, end_date, days, total_price]
     );
 
-    console.log('✅ Rental created:', result.rows[0]);
+    console.log(' Rental created:', result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
-    console.error('❌ Error creating rental:', err);
+    console.error(' Error creating rental:', err);
     const error = new Error('Σφάλμα κατά την εισαγωγή της ενοικίασης') as any;
     error.statusCode = 500;
     next(error);
@@ -99,7 +99,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     total_price 
   } = req.body;
 
-  console.log('📝 Updating rental with data:', req.body);
+  console.log(' Updating rental with data:', req.body);
 
   try {
     const result = await pool.query(
@@ -123,10 +123,10 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Δεν βρέθηκε η ενοικίαση για ενημέρωση' });
     }
 
-    console.log('✅ Rental updated:', result.rows[0]);
+    console.log(' Rental updated:', result.rows[0]);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Error updating rental:', err);
+    console.error(' Error updating rental:', err);
     res.status(500).json({ error: 'Σφάλμα κατά την ενημέρωση της ενοικίασης' });
   }
 });
@@ -139,15 +139,15 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Δεν βρέθηκε η ενοικίαση προς διαγραφή' });
     }
-    console.log('✅ Rental deleted:', id);
+    console.log(' Rental deleted:', id);
     res.json({ message: 'Η ενοικίαση διαγράφηκε επιτυχώς' });
   } catch (err) {
-    console.error('❌ Error deleting rental:', err);
+    console.error(' Error deleting rental:', err);
     res.status(500).json({ error: 'Σφάλμα κατά τη διαγραφή της ενοικίασης' });
   }
 });
 
-// ✅ ΕΝΗΜΕΡΩΣΗ: POST /api/rentals με quantity update
+//  POST /api/rentals με quantity update
 router.post('/', async (req: Request, res: Response) => {
   try {
     const {
@@ -163,9 +163,9 @@ router.post('/', async (req: Request, res: Response) => {
       total_price
     } = req.body;
 
-    console.log('📝 Creating rental with data:', req.body);
+    console.log(' Creating rental with data:', req.body);
 
-    // ✅ ΠΡΟΣΘΗΚΗ: Έλεγχος διαθεσιμότητας
+    //  Έλεγχος διαθεσιμότητας
     const carCheck = await pool.query('SELECT quantity, brand, model FROM cars WHERE car_id = $1', [car_id]);
     
     if (carCheck.rows.length === 0) {
@@ -184,7 +184,7 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // ✅ ΚΥΡΙΟΣ ΣΤΟΧΟΣ: Δημιουργία rental ΚΑΙ μείωση διαθεσιμότητας
+    //  Δημιουργία rental ΚΑΙ μείωση διαθεσιμότητας
     const client = await pool.connect();
     
     try {
@@ -216,7 +216,7 @@ router.post('/', async (req: Request, res: Response) => {
       const rental = rentalResult.rows[0];
       const newQuantity = updateResult.rows[0].quantity;
 
-      console.log('✅ Rental created and quantity updated:', {
+      console.log(' Rental created and quantity updated:', {
         rental_id: rental.rental_id,
         car_id: car_id,
         new_quantity: newQuantity,
@@ -227,7 +227,7 @@ router.post('/', async (req: Request, res: Response) => {
         success: true,
         data: rental,
         rental: rental,
-        car_quantity: newQuantity, // ✅ Επιστρέφουμε τη νέα διαθεσιμότητα
+        car_quantity: newQuantity, //  Επιστρέφουμε τη νέα διαθεσιμότητα
         message: `Ενοικίαση δημιουργήθηκε επιτυχώς! Απομένουν ${newQuantity} διαθέσιμα ${car.brand} ${car.model}.`
       });
 
@@ -239,7 +239,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
   } catch (error: any) {
-    console.error('❌ Error creating rental:', error);
+    console.error(' Error creating rental:', error);
     res.status(500).json({
       success: false,
       message: 'Σφάλμα κατά τη δημιουργία ενοικίασης',

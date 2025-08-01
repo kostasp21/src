@@ -7,7 +7,7 @@ router.get('/available', async (req: Request, res: Response) => {
   try {
     const { start_date, end_date, min_price, max_price } = req.query;
 
-    console.log('🔍 Searching for available cars:', { 
+    console.log(' Searching for available cars:', { 
       start_date, 
       end_date, 
       min_price,
@@ -26,7 +26,7 @@ router.get('/available', async (req: Request, res: Response) => {
     const minPrice = min_price ? parseFloat(min_price as string) : null;
     const maxPrice = max_price ? parseFloat(max_price as string) : null;
 
-    console.log('🔍 Converted prices:', { minPrice, maxPrice });
+    console.log(' Converted prices:', { minPrice, maxPrice });
 
     // Build base query
     let query = `
@@ -59,8 +59,8 @@ router.get('/available', async (req: Request, res: Response) => {
 
     query += ` ORDER BY CAST(c.price_per_day AS DECIMAL) ASC`;
 
-    console.log('🔍 Final query:', query);
-    console.log('🔍 Query params:', queryParams);
+    console.log(' Final query:', query);
+    console.log(' Query params:', queryParams);
 
     const result = await pool.query(query, queryParams);
 
@@ -75,12 +75,12 @@ router.get('/available', async (req: Request, res: Response) => {
       });
     }
 
-    console.log(`✅ Found ${filteredResults.length} available cars (before filter: ${result.rows.length})`);
+    console.log(` Found ${filteredResults.length} available cars (before filter: ${result.rows.length})`);
     
     // Log price range in results
     if (filteredResults.length > 0) {
       const prices = filteredResults.map(car => parseFloat(car.price_per_day));
-      console.log('📊 Price range in results:', {
+      console.log(' Price range in results:', {
         min: Math.min(...prices),
         max: Math.max(...prices)
       });
@@ -115,10 +115,10 @@ router.get('/popular', async (req: Request, res: Response) => {
       LIMIT 6
     `);
 
-    console.log(`🌟 Retrieved ${result.rows.length} popular cars`);
+    console.log(` Retrieved ${result.rows.length} popular cars`);
     res.json(result.rows);
   } catch (err) {
-    console.error('❌ Error fetching popular cars:', err);
+    console.error(' Error fetching popular cars:', err);
     res.status(500).json({ error: 'Σφάλμα κατά την ανάκτηση δημοφιλών αυτοκινήτων' });
   }
 });
@@ -176,7 +176,7 @@ router.get('/', async (req: Request, res: Response) => {
       values
     );
 
-    console.log(`📋 Retrieved ${result.rows.length} cars with filters`);
+    console.log(` Retrieved ${result.rows.length} cars with filters`);
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Error fetching cars:', err);
@@ -199,7 +199,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Το αυτοκίνητο δεν βρέθηκε' });
     }
 
-    console.log(`🔍 Retrieved car:`, result.rows[0]);
+    console.log(` Retrieved car:`, result.rows[0]);
     res.json(result.rows[0]);
   } catch (err) {
     console.error('❌ Error fetching car:', err);
@@ -212,7 +212,7 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const { brand, model, description, price_per_day, quantity, image_url } = req.body;
 
-    console.log('🚗 Creating new car:', req.body);
+    console.log(' Creating new car:', req.body);
 
     if (!brand || !model || !price_per_day) {
       return res.status(400).json({ error: 'Τα πεδία brand, model και price_per_day είναι υποχρεωτικά' });
@@ -224,10 +224,10 @@ router.post('/', async (req: Request, res: Response) => {
       [brand, model, description, Number(price_per_day), Number(quantity) || 1, image_url]
     );
 
-    console.log('✅ Car created successfully:', result.rows[0]);
+    console.log(' Car created successfully:', result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Error creating car:', err);
+    console.error(' Error creating car:', err);
     res.status(500).json({ error: 'Σφάλμα κατά την εισαγωγή του αυτοκινήτου' });
   }
 });
@@ -238,7 +238,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { brand, model, description, price_per_day, quantity, image_url } = req.body;
 
-    console.log('🔄 Updating car:', { id, body: req.body });
+    console.log(' Updating car:', { id, body: req.body });
 
     if (!brand || !model || !price_per_day) {
       return res.status(400).json({ error: 'Τα πεδία brand, model και price_per_day είναι υποχρεωτικά' });
@@ -256,10 +256,10 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Το αυτοκίνητο δεν βρέθηκε για ενημέρωση' });
     }
 
-    console.log('✅ Car updated successfully:', result.rows[0]);
+    console.log(' Car updated successfully:', result.rows[0]);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Error updating car:', err);
+    console.error(' Error updating car:', err);
     res.status(500).json({ error: 'Σφάλμα κατά την ενημέρωση του αυτοκινήτου' });
   }
 });
@@ -272,10 +272,10 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Το αυτοκίνητο δεν βρέθηκε για διαγραφή' });
     }
-    console.log('🗑️ Car deleted successfully:', result.rows[0]);
+    console.log(' Car deleted successfully:', result.rows[0]);
     res.json({ message: 'Το αυτοκίνητο διαγράφηκε επιτυχώς', car: result.rows[0] });
   } catch (err) {
-    console.error('❌ Error deleting car:', err);
+    console.error(' Error deleting car:', err);
     res.status(500).json({ error: 'Σφάλμα κατά τη διαγραφή του αυτοκινήτου' });
   }
 });

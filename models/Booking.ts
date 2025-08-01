@@ -48,7 +48,7 @@ export interface BookingStats {
 
 export class BookingModel {
   
-  // ✅ Λήψη όλων των κρατήσεων ενός χρήστη
+  //  Λήψη όλων των κρατήσεων ενός χρήστη
   static async getUserBookings(userId: number): Promise<Booking[]> {
     try {
       const query = `
@@ -67,12 +67,12 @@ export class BookingModel {
       const result = await pool.query(query, [userId]);
       return result.rows;
     } catch (error) {
-      console.error('❌ Error fetching user bookings:', error);
+      console.error(' Error fetching user bookings:', error);
       throw error;
     }
   }
 
-  // ✅ Δημιουργία νέας κράτησης
+  //  Δημιουργία νέας κράτησης
   static async createBooking(bookingData: BookingData): Promise<Booking> {
     const client: PoolClient = await pool.connect();
     
@@ -155,7 +155,7 @@ export class BookingModel {
     }
   }
 
-  // ✅ Λήψη μίας κράτησης
+  //  Λήψη μίας κράτησης
   static async getBookingById(bookingId: number, userId?: number): Promise<Booking | null> {
     try {
       let query = `
@@ -182,16 +182,16 @@ export class BookingModel {
       const result = await pool.query(query, values);
       return result.rows[0] || null;
     } catch (error) {
-      console.error('❌ Error fetching booking:', error);
+      console.error(' Error fetching booking:', error);
       throw error;
     }
   }
 
-  // ✅ Ενημέρωση κράτησης
+  //  Ενημέρωση κράτησης
   static async updateBooking(
     bookingId: number, 
     updateData: Partial<Pick<Booking, 'status' | 'customer_name' | 'customer_email' | 'customer_phone' | 'notes'>>, 
-    userId?: number // ✅ ΑΛΛΑΓΗ: Optional για admin use
+    userId?: number //  ΑΛΛΑΓΗ: Optional για admin use
   ): Promise<Booking | null> {
     try {
       const allowedFields = ['status', 'customer_name', 'customer_email', 'customer_phone', 'notes'];
@@ -222,7 +222,7 @@ export class BookingModel {
       
       values.push(bookingId);
       
-      // ✅ ΑΛΛΑΓΗ: Only add user check if userId provided
+      //  Only add user check if userId provided
       if (userId !== undefined) {
         query += ` AND user_id = $${paramCount + 1}`;
         values.push(userId);
@@ -238,7 +238,7 @@ export class BookingModel {
     }
   }
 
-  // ✅ Ακύρωση κράτησης
+  //  Ακύρωση κράτησης
   static async cancelBooking(bookingId: number, userId: number): Promise<Booking | null> {
     try {
       return await this.updateBooking(bookingId, { status: 'cancelled' }, userId);
@@ -248,7 +248,7 @@ export class BookingModel {
     }
   }
 
-  // ✅ Στατιστικά χρήστη
+  //  Στατιστικά χρήστη
   static async getUserBookingStats(userId: number): Promise<BookingStats> {
     try {
       const query = `
@@ -273,7 +273,7 @@ export class BookingModel {
     }
   }
 
-  // ✅ ΠΡΟΣΘΗΚΗ: Admin method για όλες τις κρατήσεις
+  //  Admin method για όλες τις κρατήσεις
   static async getAllBookings(): Promise<Booking[]> {
     try {
       const query = `
@@ -297,7 +297,7 @@ export class BookingModel {
     }
   }
 
-  // ✅ ΠΡΟΣΘΗΚΗ: Admin method για στατιστικά συστήματος
+  //  Admin method για στατιστικά συστήματος
   static async getAllBookingStats(): Promise<BookingStats> {
     try {
       const query = `
@@ -316,7 +316,7 @@ export class BookingModel {
       const result = await pool.query(query);
       return result.rows[0];
     } catch (error) {
-      console.error('❌ Error fetching all booking stats:', error);
+      console.error(' Error fetching all booking stats:', error);
       throw error;
     }
   }

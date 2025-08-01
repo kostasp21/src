@@ -3,14 +3,14 @@ import { pool } from '../db';
 
 const router = express.Router();
 
-console.log('📋 Bookings routes loading with database (NO AUTH)...');
+console.log(' Bookings routes loading with database (NO AUTH)...');
 
-// ✅ ΠΡΟΣΘΗΚΗ: Auto-create simplified table
+//  Auto-create simplified table
 const createBookingsTable = async () => {
   try {
     const client = await pool.connect();
     
-    console.log('🔍 Creating simplified bookings table...');
+    console.log(' Creating simplified bookings table...');
     
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS simple_bookings (
@@ -29,7 +29,7 @@ const createBookingsTable = async () => {
     `;
     
     await client.query(createTableQuery);
-    console.log('✅ simple_bookings table ready');
+    console.log(' simple_bookings table ready');
     
     client.release();
     return true;
@@ -39,7 +39,7 @@ const createBookingsTable = async () => {
   }
 };
 
-// ✅ GET BOOKINGS
+//  GET BOOKINGS
 router.get('/', (req, res) => {
   console.log('📋 GET /api/bookings called');
   res.json({
@@ -50,13 +50,13 @@ router.get('/', (req, res) => {
   });
 });
 
-// ✅ POST BOOKING - NO USER_ID
+//  POST BOOKING - NO USER_ID
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // ✅ Ensure table exists
+    //  Ensure table exists
     await createBookingsTable();
     
-    console.log('📝 POST /api/bookings called (NO USER_ID)');
+    console.log(' POST /api/bookings called (NO USER_ID)');
     console.log('- Request body:', req.body);
     
     const {
@@ -79,13 +79,13 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    console.log('✅ All required fields present, checking car...');
+    console.log(' All required fields present, checking car...');
 
     // Check car availability
     const carCheck = await pool.query('SELECT quantity, brand, model FROM cars WHERE car_id = $1', [car_id]);
     
     if (carCheck.rows.length === 0) {
-      console.log('❌ Car not found:', car_id);
+      console.log(' Car not found:', car_id);
       return res.status(404).json({
         success: false,
         message: 'Car not found'
@@ -94,10 +94,10 @@ router.post('/', async (req: Request, res: Response) => {
 
     const currentQuantity = carCheck.rows[0].quantity;
     const carInfo = carCheck.rows[0];
-    console.log(`🚗 Car: ${carInfo.brand} ${carInfo.model}, Quantity: ${currentQuantity}`);
+    console.log(` Car: ${carInfo.brand} ${carInfo.model}, Quantity: ${currentQuantity}`);
     
     if (currentQuantity <= 0) {
-      console.log('❌ Car not available');
+      console.log(' Car not available');
       return res.status(400).json({
         success: false,
         message: 'Car not available for booking'
@@ -109,9 +109,9 @@ router.post('/', async (req: Request, res: Response) => {
     
     try {
       await client.query('BEGIN');
-      console.log('🔄 Starting transaction...');
+      console.log(' Starting transaction...');
 
-      // ✅ ΑΛΛΑΓΗ: Create booking WITHOUT user_id
+      //  Create booking WITHOUT user_id
       const bookingResult = await client.query(`
         INSERT INTO simple_bookings (
           car_id, start_date, end_date, total_price, 
@@ -121,9 +121,9 @@ router.post('/', async (req: Request, res: Response) => {
       `, [car_id, start_date, end_date, total_price, customer_name, customer_email, customer_phone, notes]);
 
       const booking = bookingResult.rows[0];
-      console.log('✅ Booking created:', booking.booking_id);
+      console.log(' Booking created:', booking.booking_id);
 
-      // ✅ ΔΙΟΡΘΩΣΗ: Update car quantity χωρίς updated_at reference
+      //  Update car quantity χωρίς updated_at reference
       const updateResult = await client.query(`
         UPDATE cars 
         SET quantity = quantity - 1
@@ -132,15 +132,15 @@ router.post('/', async (req: Request, res: Response) => {
       `, [car_id]);
 
       if (updateResult.rows.length === 0) {
-        console.log('❌ Failed to update car quantity');
+        console.log(' Failed to update car quantity');
         throw new Error('Failed to update car availability');
       }
 
       const newQuantity = updateResult.rows[0].quantity;
-      console.log(`✅ Car quantity updated: ${currentQuantity} → ${newQuantity}`);
+      console.log(` Car quantity updated: ${currentQuantity} → ${newQuantity}`);
 
       await client.query('COMMIT');
-      console.log('✅ Transaction committed');
+      console.log(' Transaction committed');
 
       res.status(201).json({
         success: true,
@@ -152,14 +152,14 @@ router.post('/', async (req: Request, res: Response) => {
 
     } catch (transactionError: any) {
       await client.query('ROLLBACK');
-      console.error('❌ Transaction failed:', transactionError);
+      console.error(' Transaction failed:', transactionError);
       throw transactionError;
     } finally {
       client.release();
     }
 
   } catch (error: any) {
-    console.error('❌ Error creating booking:', error);
+    console.error(' Error creating booking:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating booking',
@@ -168,12 +168,12 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// ✅ GET ALL BOOKINGS - Simple version
+//  GET ALL BOOKINGS 
 router.get('/all', async (req: Request, res: Response) => {
   try {
     await createBookingsTable();
     
-    console.log('📋 GET /api/bookings/all called');
+    console.log(' GET /api/bookings/all called');
     
     const result = await pool.query(`
       SELECT 
@@ -187,7 +187,7 @@ router.get('/all', async (req: Request, res: Response) => {
       ORDER BY b.created_at DESC
     `);
 
-    console.log('✅ Found', result.rows.length, 'bookings');
+    console.log(' Found', result.rows.length, 'bookings');
 
     res.json({
       success: true,
@@ -196,7 +196,7 @@ router.get('/all', async (req: Request, res: Response) => {
       count: result.rows.length
     });
   } catch (error: any) {
-    console.error('❌ Error fetching bookings:', error);
+    console.error(' Error fetching bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching bookings',
@@ -205,13 +205,13 @@ router.get('/all', async (req: Request, res: Response) => {
   }
 });
 
-// ✅ ΠΡΟΣΘΗΚΗ: Get bookings by customer email/phone
+//  Get bookings by customer email/phone
 router.get('/user/:identifier', async (req: Request, res: Response) => {
   try {
     await createBookingsTable();
     
     const { identifier } = req.params; // email ή phone
-    console.log('📋 GET /api/bookings/user for identifier:', identifier);
+    console.log(' GET /api/bookings/user for identifier:', identifier);
     
     const result = await pool.query(`
       SELECT 
@@ -226,7 +226,7 @@ router.get('/user/:identifier', async (req: Request, res: Response) => {
       ORDER BY b.created_at DESC
     `, [identifier]);
 
-    console.log(`✅ Found ${result.rows.length} bookings for user: ${identifier}`);
+    console.log(` Found ${result.rows.length} bookings for user: ${identifier}`);
 
     res.json({
       success: true,
@@ -245,7 +245,7 @@ router.get('/user/:identifier', async (req: Request, res: Response) => {
   }
 });
 
-console.log('✅ Bookings routes loaded - CLEAN VERSION');
+console.log(' Bookings routes loaded - CLEAN VERSION');
 
 export default router;
 
