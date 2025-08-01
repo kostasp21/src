@@ -1,5 +1,6 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import rentalsRouter from './routes/rentals';
+import bookingsRouter from './routes/bookings';
 import cors from 'cors';
 
 const app: Application = express();
@@ -10,6 +11,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/rentals', rentalsRouter);
+app.use('/api/bookings', bookingsRouter);
 
 // Health check
 app.get('/', (req: Request, res: Response) => {

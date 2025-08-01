@@ -34,14 +34,14 @@ const createBookingsTable = async () => {
     client.release();
     return true;
   } catch (error) {
-    console.error('❌ Error creating table:', error);
+    console.error(' Error creating table:', error);
     return false;
   }
 };
 
 //  GET BOOKINGS
 router.get('/', (req, res) => {
-  console.log('📋 GET /api/bookings called');
+  console.log(' GET /api/bookings called');
   res.json({
     success: true,
     message: 'Bookings endpoint is working',
@@ -245,10 +245,72 @@ router.get('/user/:identifier', async (req: Request, res: Response) => {
   }
 });
 
+// 🗑️ DELETE BOOKING BY ID
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const bookingId = parseInt(req.params.id);
+    
+    if (!bookingId || isNaN(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID'
+      });
+    }
+    
+    console.log(`🗑️ DELETE /api/bookings/${bookingId} called`);
+    
+    await createBookingsTable();
+    const client = await pool.connect();
+    
+    // First check if booking exists
+    const checkQuery = 'SELECT * FROM simple_bookings WHERE booking_id = $1';
+    const checkResult = await client.query(checkQuery, [bookingId]);
+    
+    if (checkResult.rows.length === 0) {
+      client.release();
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    
+    const booking = checkResult.rows[0];
+    
+    // Delete the booking
+    const deleteQuery = 'DELETE FROM simple_bookings WHERE booking_id = $1';
+    await client.query(deleteQuery, [bookingId]);
+    
+    // Restore car quantity if needed
+    if (booking.car_id) {
+      const updateCarQuery = `
+        UPDATE cars 
+        SET quantity = quantity + 1 
+        WHERE car_id = $1
+      `;
+      await client.query(updateCarQuery, [booking.car_id]);
+      console.log(`🚗 Restored quantity for car ${booking.car_id}`);
+    }
+    
+    client.release();
+    
+    console.log(`✅ Booking ${bookingId} deleted successfully`);
+    
+    res.json({
+      success: true,
+      message: 'Booking deleted successfully',
+      booking_id: bookingId
+    });
+    
+  } catch (error) {
+    console.error('❌ Error deleting booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting booking',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 console.log(' Bookings routes loaded - CLEAN VERSION');
 
 export default router;
-
-
-
-
