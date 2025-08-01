@@ -245,7 +245,130 @@ router.get('/user/:identifier', async (req: Request, res: Response) => {
   }
 });
 
-// 🗑️ DELETE BOOKING BY ID
+// � UPDATE BOOKING BY ID
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const bookingId = parseInt(req.params.id);
+    
+    if (!bookingId || isNaN(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID'
+      });
+    }
+    
+    console.log(`📝 PUT /api/bookings/${bookingId} called`);
+    console.log('- Request body:', req.body);
+    
+    const {
+      customer_name,
+      customer_email,
+      customer_phone,
+      start_date,
+      end_date,
+      status,
+      notes,
+      total_price
+    } = req.body;
+    
+    await createBookingsTable();
+    const client = await pool.connect();
+    
+    // First check if booking exists
+    const checkQuery = 'SELECT * FROM simple_bookings WHERE booking_id = $1';
+    const checkResult = await client.query(checkQuery, [bookingId]);
+    
+    if (checkResult.rows.length === 0) {
+      client.release();
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    
+    // Build dynamic update query based on provided fields
+    const updateFields = [];
+    const updateValues = [];
+    let valueIndex = 1;
+    
+    if (customer_name !== undefined) {
+      updateFields.push(`customer_name = $${valueIndex++}`);
+      updateValues.push(customer_name);
+    }
+    if (customer_email !== undefined) {
+      updateFields.push(`customer_email = $${valueIndex++}`);
+      updateValues.push(customer_email);
+    }
+    if (customer_phone !== undefined) {
+      updateFields.push(`customer_phone = $${valueIndex++}`);
+      updateValues.push(customer_phone);
+    }
+    if (start_date !== undefined) {
+      updateFields.push(`start_date = $${valueIndex++}`);
+      updateValues.push(start_date);
+    }
+    if (end_date !== undefined) {
+      updateFields.push(`end_date = $${valueIndex++}`);
+      updateValues.push(end_date);
+    }
+    if (status !== undefined) {
+      updateFields.push(`status = $${valueIndex++}`);
+      updateValues.push(status);
+    }
+    if (notes !== undefined) {
+      updateFields.push(`notes = $${valueIndex++}`);
+      updateValues.push(notes);
+    }
+    if (total_price !== undefined) {
+      updateFields.push(`total_price = $${valueIndex++}`);
+      updateValues.push(total_price);
+    }
+    
+    if (updateFields.length === 0) {
+      client.release();
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+    
+    // Add booking_id to the end for WHERE clause
+    updateValues.push(bookingId);
+    
+    const updateQuery = `
+      UPDATE simple_bookings 
+      SET ${updateFields.join(', ')}
+      WHERE booking_id = $${valueIndex}
+      RETURNING *
+    `;
+    
+    console.log('📝 Update query:', updateQuery);
+    console.log('📝 Update values:', updateValues);
+    
+    const updateResult = await client.query(updateQuery, updateValues);
+    const updatedBooking = updateResult.rows[0];
+    
+    client.release();
+    
+    console.log(`✅ Booking ${bookingId} updated successfully`);
+    
+    res.json({
+      success: true,
+      message: 'Booking updated successfully',
+      booking: updatedBooking
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating booking',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// �🗑️ DELETE BOOKING BY ID
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const bookingId = parseInt(req.params.id);
