@@ -6,12 +6,19 @@ import bookingsRouter from './routes/bookings';
 import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth.routes';
 import { pool } from './db'; 
+// 🆕 ΔΙΟΡΘΩΜΕΝΟΣ IMPORT - local path
+import { bookingScheduler } from './services/bookingScheduler';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// 🔥 ΕΝΕΡΓΟΠΟΙΗΣΗ SCHEDULER - ΗΔΗ ΣΩΣΤΑ!
+console.log('🌟 Starting backend server...');
+bookingScheduler.start();
+console.log('✅ Booking scheduler activated!');
 
 //  LOGGING για debugging
 app.use((req, res, next) => {
@@ -77,5 +84,64 @@ const startServer = async () => {
     });
   }
 };
+
+// 🔧 Admin endpoints για τον scheduler
+app.post('/api/admin/scheduler/manual-check', async (req, res) => {
+  try {
+    console.log('🔧 Manual booking check requested by admin');
+    await bookingScheduler.checkExpiredBookings();
+    
+    res.json({
+      success: true,
+      message: 'Manual booking check completed',
+      timestamp: new Date().toISOString(),
+      next_auto_check: bookingScheduler.getNextCheckTime()
+    });
+  } catch (error) {
+    console.error('❌ Manual check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error during manual check',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get('/api/admin/scheduler/status', (req, res) => {
+  try {
+    const isRunning = bookingScheduler.isRunning();
+    const nextCheck = bookingScheduler.getNextCheckTime();
+    
+    res.json({
+      success: true,
+      scheduler: {
+        running: isRunning,
+        next_check: nextCheck,
+        interval_minutes: 60,
+        status: isRunning ? 'Active' : 'Stopped'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Scheduler status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting scheduler status',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+// 🛑 Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('🛑 Received SIGINT, shutting down gracefully...');
+  bookingScheduler.stop();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('🛑 Received SIGTERM, shutting down gracefully...');
+  bookingScheduler.stop();
+  process.exit(0);
+});
 
 startServer();
