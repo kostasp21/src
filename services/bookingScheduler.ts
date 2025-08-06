@@ -8,7 +8,7 @@ class BookingScheduler {
     console.log('📅 BookingScheduler initialized');
   }
 
-  // ✅ Ξεκινήματος αυτόματου ελέγχου
+  //  Ξεκινήματος αυτόματου ελέγχου
   start(): void {
     if (this.intervalId) {
       console.log('⚠️ Scheduler is already running');
@@ -26,7 +26,7 @@ class BookingScheduler {
     }, this.INTERVAL_MS);
   }
 
-  // ✅ Διακοπή αυτόματου ελέγχου
+  //  Διακοπή αυτόματου ελέγχου
   stop(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -35,7 +35,7 @@ class BookingScheduler {
     }
   }
 
-  // ✅ Manual έλεγχος (για testing)
+  //  Manual έλεγχος (για testing)
   async checkExpiredBookings(): Promise<void> {
     try {
       const now = new Date().toISOString();
@@ -46,7 +46,7 @@ class BookingScheduler {
       if (result.updated > 0) {
         console.log(`✅ [${now}] Processed ${result.updated} expired bookings:`);
         result.details.forEach(detail => {
-          console.log(`   - Booking #${detail.booking_id}: ${detail.car_info} (${detail.old_status} → completed, quantity: ${detail.new_quantity})`);
+          console.log(`   - Booking #${detail.booking_id}: ${detail.car_info} (${detail.old_status} → completed)`);
         });
       } else {
         console.log(`ℹ️ [${now}] No expired bookings found`);
@@ -57,12 +57,12 @@ class BookingScheduler {
     }
   }
 
-  // ✅ Status του scheduler
+  //  Status του scheduler
   isRunning(): boolean {
     return this.intervalId !== null;
   }
 
-  // ✅ Επόμενος έλεγχος (για debugging)
+  //  Επόμενος έλεγχος (για debugging)
   getNextCheckTime(): Date | null {
     if (!this.intervalId) return null;
     return new Date(Date.now() + this.INTERVAL_MS);

@@ -6,7 +6,6 @@ import bookingsRouter from './routes/bookings';
 import { setupSwagger } from './swagger';
 import authRoutes from './routes/auth.routes';
 import { pool } from './db'; 
-// 🆕 ΔΙΟΡΘΩΜΕΝΟΣ IMPORT - local path
 import { bookingScheduler } from './services/bookingScheduler';
 
 const app = express();
@@ -15,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// 🔥 ΕΝΕΡΓΟΠΟΙΗΣΗ SCHEDULER - ΗΔΗ ΣΩΣΤΑ!
+
 console.log('🌟 Starting backend server...');
 bookingScheduler.start();
 console.log('✅ Booking scheduler activated!');
@@ -85,7 +84,7 @@ const startServer = async () => {
   }
 };
 
-// 🔧 Admin endpoints για τον scheduler
+//  Admin endpoints για τον scheduler
 app.post('/api/admin/scheduler/manual-check', async (req, res) => {
   try {
     console.log('🔧 Manual booking check requested by admin');
@@ -131,7 +130,7 @@ app.get('/api/admin/scheduler/status', (req, res) => {
   }
 });
 
-// 🛑 Graceful shutdown
+//  Graceful shutdown
 process.on('SIGINT', () => {
   console.log('🛑 Received SIGINT, shutting down gracefully...');
   bookingScheduler.stop();

@@ -1,21 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db';
+import { CarModel } from '../models/cars.model';
 
 const router = Router();
 
+// Available cars με σωστό έλεγχο διαθεσιμότητας
 router.get('/available', async (req: Request, res: Response) => {
   try {
     const { start_date, end_date, min_price, max_price } = req.query;
 
-    console.log(' Searching for available cars:', { 
+    console.log('🔍 Searching for available cars:', { 
       start_date, 
       end_date, 
       min_price,
-      max_price,
-      types: {
-        min_price: typeof min_price,
-        max_price: typeof max_price
-      }
+      max_price
     });
 
     if (!start_date || !end_date) {
@@ -26,27 +24,48 @@ router.get('/available', async (req: Request, res: Response) => {
     const minPrice = min_price ? parseFloat(min_price as string) : null;
     const maxPrice = max_price ? parseFloat(max_price as string) : null;
 
-    console.log(' Converted prices:', { minPrice, maxPrice });
+    console.log('💰 Converted prices:', { minPrice, maxPrice });
 
-    // Build base query
+    //  χρησιμοποιεί simple_bookings αντί για user_bookings
     let query = `
-      SELECT DISTINCT c.* 
+      SELECT 
+        c.*,
+        (
+          c.quantity - COALESCE((
+            SELECT COUNT(*)
+            FROM simple_bookings sb
+            WHERE sb.car_id = c.car_id
+            AND sb.status IN ('confirmed', 'active')
+            AND (
+              (sb.start_date <= $1 AND sb.end_date >= $1) OR
+              (sb.start_date <= $2 AND sb.end_date >= $2) OR
+              (sb.start_date >= $1 AND sb.end_date <= $2)
+            )
+          ), 0)
+        ) as available_quantity,
+        CASE 
+          WHEN c.quantity <= 0 THEN false
+          ELSE (
+            c.quantity > COALESCE((
+              SELECT COUNT(*)
+              FROM simple_bookings sb
+              WHERE sb.car_id = c.car_id
+              AND sb.status IN ('confirmed', 'active')
+              AND (
+                (sb.start_date <= $1 AND sb.end_date >= $1) OR
+                (sb.start_date <= $2 AND sb.end_date >= $2) OR
+                (sb.start_date >= $1 AND sb.end_date <= $2)
+              )
+            ), 0)
+          )
+        END as is_available
       FROM cars c
-      WHERE c.car_id NOT IN (
-        SELECT DISTINCT r.car_id 
-        FROM rentals r 
-        WHERE r.car_id IS NOT NULL
-        AND (
-          (r.start_date <= $1 AND r.end_date >= $1) OR
-          (r.start_date <= $2 AND r.end_date >= $2) OR  
-          (r.start_date >= $1 AND r.end_date <= $2)
-        )
-      )
+      WHERE c.available = true
     `;
 
     const queryParams: any[] = [start_date, end_date];
     
-    // Add price filters with proper type conversion
+    // Add price filters
     if (minPrice !== null && !isNaN(minPrice)) {
       queryParams.push(minPrice);
       query += ` AND CAST(c.price_per_day AS DECIMAL) >= $${queryParams.length}`;
@@ -57,32 +76,53 @@ router.get('/available', async (req: Request, res: Response) => {
       query += ` AND CAST(c.price_per_day AS DECIMAL) <= $${queryParams.length}`;
     }
 
-    query += ` ORDER BY CAST(c.price_per_day AS DECIMAL) ASC`;
+    //  Φιλτράρισμα μόνο διαθέσιμων αυτοκινήτων
+    query += ` 
+      HAVING (
+        c.quantity > COALESCE((
+          SELECT COUNT(*)
+          FROM simple_bookings sb
+          WHERE sb.car_id = c.car_id
+          AND sb.status IN ('confirmed', 'active')
+          AND (
+            (sb.start_date <= $1 AND sb.end_date >= $1) OR
+            (sb.start_date <= $2 AND sb.end_date >= $2) OR
+            (sb.start_date >= $1 AND sb.end_date <= $2)
+          )
+        ), 0)
+      )
+      ORDER BY CAST(c.price_per_day AS DECIMAL) ASC
+    `;
 
-    console.log(' Final query:', query);
-    console.log(' Query params:', queryParams);
+    console.log('📋 Final query:', query);
+    console.log('🔧 Query params:', queryParams);
 
     const result = await pool.query(query, queryParams);
 
-    // Filter results again on the application level as safety measure
-    let filteredResults = result.rows;
-    if (minPrice !== null || maxPrice !== null) {
-      filteredResults = result.rows.filter(car => {
-        const price = parseFloat(car.price_per_day);
-        if (minPrice !== null && price < minPrice) return false;
-        if (maxPrice !== null && price > maxPrice) return false;
-        return true;
-      });
-    }
+    // Additional application-level filtering για ασφάλεια
+    let filteredResults = result.rows.filter(car => {
+      const price = parseFloat(car.price_per_day);
+      if (minPrice !== null && price < minPrice) return false;
+      if (maxPrice !== null && price > maxPrice) return false;
+      return car.is_available && car.available_quantity > 0;
+    });
 
-    console.log(` Found ${filteredResults.length} available cars (before filter: ${result.rows.length})`);
+    console.log(`✅ Found ${filteredResults.length} available cars (total checked: ${result.rows.length})`);
     
-    // Log price range in results
+    // Log availability details
     if (filteredResults.length > 0) {
       const prices = filteredResults.map(car => parseFloat(car.price_per_day));
-      console.log(' Price range in results:', {
-        min: Math.min(...prices),
-        max: Math.max(...prices)
+      const availabilities = filteredResults.map(car => car.available_quantity);
+      
+      console.log('📊 Results summary:', {
+        price_range: { min: Math.min(...prices), max: Math.max(...prices) },
+        availability_range: { min: Math.min(...availabilities), max: Math.max(...availabilities) },
+        sample_cars: filteredResults.slice(0, 3).map(car => ({
+          id: car.car_id,
+          name: `${car.brand} ${car.model}`,
+          price: car.price_per_day,
+          available: car.available_quantity
+        }))
       });
     }
 
@@ -93,40 +133,97 @@ router.get('/available', async (req: Request, res: Response) => {
   }
 });
 
+//  endpoint για car availability update
+router.post('/update-availability', async (req: Request, res: Response) => {
+  try {
+    console.log('🔧 Manual car availability update requested');
+    
+    const results = await CarModel.updateAllCarsAvailability();
+    
+    res.json({
+      success: true,
+      message: 'Car availability updated successfully',
+      updated_cars: results.length,
+      details: results
+    });
+  } catch (error) {
+    console.error('❌ Car availability update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating car availability',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
 
+//  Έλεγχος διαθεσιμότητας συγκεκριμένου αυτοκινήτου
+router.get('/:id/availability', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { start_date, end_date } = req.query;
 
+    if (!start_date || !end_date) {
+      return res.status(400).json({ 
+        error: 'Οι παράμετροι start_date και end_date είναι υποχρεωτικές' 
+      });
+    }
 
-// GET popular cars (most rented)
+    const availability = await CarModel.checkCarAvailability(
+      parseInt(id), 
+      start_date as string, 
+      end_date as string
+    );
+
+    res.json({
+      car_id: parseInt(id),
+      dates: { start_date, end_date },
+      ...availability
+    });
+  } catch (err) {
+    console.error('❌ Error checking car availability:', err);
+    res.status(500).json({ error: 'Σφάλμα κατά τον έλεγχο διαθεσιμότητας' });
+  }
+});
+
+//  Popular cars με σωστό έλεγχο
 router.get('/popular', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`
       SELECT 
         c.*,
-        COALESCE(r.rental_count, 0) as rental_count
+        COALESCE(ub.booking_count, 0) as booking_count,
+        (
+          c.quantity - COALESCE((
+            SELECT COUNT(*)
+            FROM user_bookings ub2
+            WHERE ub2.car_id = c.car_id
+            AND ub2.status IN ('confirmed', 'active')
+            AND ub2.end_date >= CURRENT_DATE
+          ), 0)
+        ) as current_available_quantity
       FROM cars c
       LEFT JOIN (
         SELECT 
           car_id, 
-          COUNT(*) as rental_count
-        FROM rentals 
+          COUNT(*) as booking_count
+        FROM user_bookings 
+        WHERE status IN ('confirmed', 'active', 'completed')
         GROUP BY car_id
-      ) r ON c.car_id = r.car_id
-      ORDER BY r.rental_count DESC NULLS LAST, c.price_per_day ASC
+      ) ub ON c.car_id = ub.car_id
+      WHERE c.available = true
+      ORDER BY ub.booking_count DESC NULLS LAST, c.price_per_day ASC
       LIMIT 6
     `);
 
-    console.log(` Retrieved ${result.rows.length} popular cars`);
+    console.log(`🌟 Retrieved ${result.rows.length} popular cars`);
     res.json(result.rows);
   } catch (err) {
-    console.error(' Error fetching popular cars:', err);
+    console.error('❌ Error fetching popular cars:', err);
     res.status(500).json({ error: 'Σφάλμα κατά την ανάκτηση δημοφιλών αυτοκινήτων' });
   }
 });
 
-
-
-
-// GET όλα τα αυτοκίνητα με φίλτρα
+//  Όλα τα αυτοκίνητα με availability info
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { brand, model, min_price, max_price, search } = req.query;
@@ -137,27 +234,27 @@ router.get('/', async (req: Request, res: Response) => {
     // Search filter
     if (search) {
       values.push(`%${search}%`);
-      filters.push(`(brand ILIKE $${values.length} OR model ILIKE $${values.length})`);
+      filters.push(`(c.brand ILIKE $${values.length} OR c.model ILIKE $${values.length})`);
     }
 
     // Brand filter
     if (brand && !search) {
       values.push(`%${brand}%`);
-      filters.push(`brand ILIKE $${values.length}`);
+      filters.push(`c.brand ILIKE $${values.length}`);
     }
 
     // Model filter
     if (model && !search) {
       values.push(`%${model}%`);
-      filters.push(`model ILIKE $${values.length}`);
+      filters.push(`c.model ILIKE $${values.length}`);
     }
 
-    // Price range filters with proper type conversion
+    // Price range filters
     if (min_price) {
       const minPrice = parseFloat(min_price as string);
       if (!isNaN(minPrice)) {
         values.push(minPrice);
-        filters.push(`CAST(price_per_day AS DECIMAL) >= $${values.length}`);
+        filters.push(`CAST(c.price_per_day AS DECIMAL) >= $${values.length}`);
       }
     }
 
@@ -165,18 +262,40 @@ router.get('/', async (req: Request, res: Response) => {
       const maxPrice = parseFloat(max_price as string);
       if (!isNaN(maxPrice)) {
         values.push(maxPrice);
-        filters.push(`CAST(price_per_day AS DECIMAL) <= $${values.length}`);
+        filters.push(`CAST(c.price_per_day AS DECIMAL) <= $${values.length}`);
       }
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
     
-    const result = await pool.query(
-      `SELECT * FROM cars ${whereClause} ORDER BY CAST(price_per_day AS DECIMAL) ASC`, 
-      values
-    );
+    //  Enhanced query με availability info
+    const query = `
+      SELECT 
+        c.*,
+        (
+          c.quantity - COALESCE((
+            SELECT COUNT(*)
+            FROM user_bookings ub
+            WHERE ub.car_id = c.car_id
+            AND ub.status IN ('confirmed', 'active')
+            AND ub.end_date >= CURRENT_DATE
+          ), 0)
+        ) as current_available_quantity,
+        COALESCE((
+          SELECT COUNT(*)
+          FROM user_bookings ub
+          WHERE ub.car_id = c.car_id
+          AND ub.status IN ('confirmed', 'active')
+          AND ub.end_date >= CURRENT_DATE
+        ), 0) as active_bookings
+      FROM cars c
+      ${whereClause}
+      ORDER BY CAST(c.price_per_day AS DECIMAL) ASC
+    `;
+    
+    const result = await pool.query(query, values);
 
-    console.log(` Retrieved ${result.rows.length} cars with filters`);
+    console.log(`📋 Retrieved ${result.rows.length} cars with availability info`);
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Error fetching cars:', err);

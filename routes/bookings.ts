@@ -245,7 +245,7 @@ router.get('/user/:identifier', async (req: Request, res: Response) => {
   }
 });
 
-// � UPDATE BOOKING BY ID
+//  UPDATE BOOKING BY ID
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const bookingId = parseInt(req.params.id);
@@ -368,7 +368,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// �🗑️ DELETE BOOKING BY ID
+//  DELETE BOOKING BY ID
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const bookingId = parseInt(req.params.id);

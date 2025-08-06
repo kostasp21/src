@@ -12,18 +12,18 @@ export const getCarById = async (id: number): Promise<Car | null> => {
 };
 
 export const createCar = async (car: Car): Promise<void> => {
-  const { brand, model, description, date, price_per_day, quantity } = car;
+  const { brand, model, description, price_per_day, quantity } = car;
   await pool.query(
-    'INSERT INTO cars (brand, model, description, date, price_per_day, quantity) VALUES ($1, $2, $3, $4, $5, $6)',
-    [brand, model, description, date, price_per_day, quantity]
+    'INSERT INTO cars (brand, model, description, price_per_day, quantity) VALUES ($1, $2, $3, $4, $5)',
+    [brand, model, description, price_per_day, quantity]
   );
 };
 
 export const updateCar = async (id: number, car: Car): Promise<void> => {
-  const { brand, model, description, date, price_per_day, quantity } = car;
+  const { brand, model, description, price_per_day, quantity } = car;
   await pool.query(
-    'UPDATE cars SET brand=$1, model=$2, description=$3, date=$4, price_per_day=$5, quantity=$6 WHERE car_id=$7',
-    [brand, model, description, date, price_per_day, quantity, id]
+    'UPDATE cars SET brand=$1, model=$2, description=$3, price_per_day=$4, quantity=$5 WHERE car_id=$6',
+    [brand, model, description, price_per_day, quantity, id]
   );
 };
 
